@@ -1,0 +1,29 @@
+---
+openvpn_conf_path: /etc/openvpn
+openvpn_server_conf_file: "{{openvpn_server_cert_key_name}}.conf"
+openvpn_cert_path: "{{openvpn_conf_path}}/openvpn-ca"
+openvpn_ccd_path: "{{openvpn_conf_path}}/ccd"
+openvpn_generated_conf_path: "{{openvpn_conf_path}}/client-confs"
+openvpn_pool_persist_file: 'ipp.txt'
+openvpn_log_path: /var/log/openvpn
+
+openvpn_service_name: "openvpn@{{openvpn_server_conf_file | replace('.conf', '')}}"
+
+openvpn_cert_key_countrycode: 'RU'
+openvpn_cert_key_province: 'Kursk'
+openvpn_cert_key_city: 'Kursk'
+openvpn_cert_key_org: 'kontora'
+openvpn_cert_key_email: ''
+openvpn_cert_key_ou: 'openvpn'
+openvpn_server_cert_key_name: 'openvpn'
+
+openvpn_new_ca: no
+openvpn_replace_server_cert: no
+openvpn_replace_server_conf: no
+
+openvpn_user: 'nobody'
+openvpn_group: 'nogroup'
+openvpn_listen_port: '1194'
+openvpn_proto: 'tcp'
+openvpn_server_address: '10.5.1.1'
+openvpn_tls_crypt: yes

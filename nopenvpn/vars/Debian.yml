@@ -1,0 +1,9 @@
+---
+openvpn_packages:
+  - openvpn
+  - easy-rsa
+openvpn_service_name: "openvpn@{{openvpn_server_conf_file | replace('.conf', '')}}"
+openvpn_conf_path: /etc/openvpn
+
+openvpn_user: 'nobody'
+openvpn_group: 'nogroup'

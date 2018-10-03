@@ -1,0 +1,52 @@
+---
+- name: Check if we can make-cadir
+  stat:
+    path: "{{openvpn_cert_path}}"
+  register: cadir_exists
+
+- name: Create CA directory from easy-rsa (if not yet created)
+  shell: "make-cadir {{openvpn_cert_path}}"
+  when: not cadir_exists['stat']['exists']
+
+- name: Set certificate default params
+  lineinfile:
+    path: "{{openvpn_cert_path}}/vars"
+    regexp: "{{item.regex}}"
+    line: "{{item.line}}"
+  loop:
+    - { regex: '^export KEY_COUNTRY', line: 'export KEY_COUNTRY="{{openvpn_cert_key_countrycode}}"' }
+    - { regex: '^export KEY_PROVINCE', line: 'export KEY_PROVINCE="{{openvpn_cert_key_province}}"' }
+    - { regex: '^export KEY_CITY', line: 'export KEY_CITY="{{openvpn_cert_key_city}}"' }
+    - { regex: '^export KEY_ORG', line: 'export KEY_ORG="{{openvpn_cert_key_org}}"' }
+    - { regex: '^export KEY_EMAIL', line: 'export KEY_EMAIL="{{openvpn_cert_key_email}}"' }
+    - { regex: '^export KEY_OU', line: 'export KEY_OU="{{openvpn_cert_key_ou}}"' }
+    - { regex: '^export KEY_NAME', line: 'export KEY_NAME="{{openvpn_server_cert_key_name}}"' }
+
+- name: Check if we have CA cert
+  stat:
+    path: "{{openvpn_cert_path}}/keys/ca.crt"
+  register: ca_cert_exists
+
+- name: Clean CA keys directory (if creaing new CA)
+  shell: . ./vars && ./clean-all
+  args:
+    chdir: "{{openvpn_cert_path}}"
+  when: openvpn_new_ca or not ca_cert_exists['stat']['exists']
+
+- name: Generate CA keys (if creaing new CA)
+  shell: . ./vars && ./pkitool --initca
+  args:
+    chdir: "{{openvpn_cert_path}}"
+  when: openvpn_new_ca or not ca_cert_exists['stat']['exists']
+
+- name: Generate DH. It takes loooong time (if creaing new CA)
+  shell: . ./vars && ./build-dh
+  args:
+    chdir: "{{openvpn_cert_path}}"
+  when: openvpn_new_ca or not ca_cert_exists['stat']['exists']
+
+- name: Generate ta.key for tls-crypt (if creaing new CA)
+  shell: openvpn --genkey --secret keys/ta.key
+  args:
+    chdir: "{{openvpn_cert_path}}"
+  when: openvpn_new_ca or not ca_cert_exists['stat']['exists']

@@ -1,0 +1,15 @@
+client
+
+dev {{openvpn_dev | default('tun')}}
+proto {{openvpn_proto}}
+remote {{openvpn_listen_address | default(ansible_fqdn)}} {{openvpn_listen_port}}
+nobind
+;resolve-retry 30
+
+persist-key
+persist-tun
+
+remote-cert-tls server
+cipher AES-256-CBC
+
+verb 3

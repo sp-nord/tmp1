@@ -1,0 +1,22 @@
+---
+- name: Add OpenVPN apt key
+  apt_key:
+    url: https://swupdate.openvpn.net/repos/repo-public.gpg
+
+- name: Add OpenVPN 2.4 repo
+  lineinfile:
+    path: /etc/apt/sources.list.d/openvpn-apt.list
+    regexp: "openvpn/release/2.4 {{ansible_distribution_release}}"
+    line: "deb http://build.openvpn.net/debian/openvpn/release/2.4 {{ansible_distribution_release}} main"
+    create: yes
+
+- name: Update apt
+  apt:
+    update_cache: yes
+
+- name: Install openvpn packages
+  apt:
+    name: "{{item}}"
+    state: present
+  loop:
+    - "{{openvpn_packages}}"

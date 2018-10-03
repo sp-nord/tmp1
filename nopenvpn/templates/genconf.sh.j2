@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# First argument: Client identifier
+
+RSA_DIR={{openvpn_cert_path}}
+KEY_DIR={{openvpn_cert_path}}/keys
+OUTPUT_DIR={{openvpn_generated_conf_path}}
+BASE_CONFIG={{openvpn_generated_conf_path}}/{{openvpn_server_cert_key_name}}.client.conf.base
+
+eval cd ${RSA_DIR} && . ./vars && ${RSA_DIR}/pkitool ${1}
+
+cat ${BASE_CONFIG} \
+    <(echo -e '<ca>') \
+    ${KEY_DIR}/ca.crt \
+    <(echo -e '</ca>\n<cert>') \
+    ${KEY_DIR}/${1}.crt \
+    <(echo -e '</cert>\n<key>') \
+    ${KEY_DIR}/${1}.key \
+    <(echo -e '</key>') \
+{% if openvpn_tls_crypt %}
+    <(echo -e '\n<tls-crypt>') \
+    ${KEY_DIR}/ta.key \
+    <(echo -e '</tls-crypt>') \
+{% endif %}
+    > ${OUTPUT_DIR}/${1}.ovpn

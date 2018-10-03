@@ -1,0 +1,67 @@
+mode server
+tls-server
+
+{% if openvpn_listen_address is defined %}
+local {{openvpn_listen_address}}
+{% endif %}
+port {{openvpn_listen_port}}
+proto {{openvpn_proto}}-server
+
+dev {{openvpn_dev | default('tun')}}
+;dev-node MyTap
+
+ca {{openvpn_cert_path}}/keys/ca.crt
+cert {{openvpn_cert_path}}/keys/{{openvpn_server_cert_key_name}}.crt
+key {{openvpn_cert_path}}/keys/{{openvpn_server_cert_key_name}}.key
+dh {{openvpn_cert_path}}/keys/dh2048.pem
+
+topology {{openvpn_topology | default('subnet')}}
+
+{% if openvpn_network is defined %}
+server {{openvpn_network}} {{openvpn_netmask | default('255.255.255.0')}}
+{% else %}
+ifconfig {{openvpn_server_address}} {{openvpn_netmask | default('255.255.255.0')}}
+{% if openvpn_pool is defined %}
+ifconfig-pool {{openvpn_pool}} {{openvpn_netmask | default('255.255.255.0')}}
+ifconfig-pool-persist {{openvpn_pool_persist_file}}
+{% endif %}
+push "route-gateway {{openvpn_server_address}}"
+{% endif %}
+
+;server-bridge 10.8.0.4 255.255.255.0 10.8.0.50 10.8.0.100
+;push "route 192.168.10.0 255.255.255.0"
+;learn-address ./script
+;push "redirect-gateway def1 bypass-dhcp"
+;push "dhcp-option DNS 208.67.222.222"
+;push "dhcp-option DNS 208.67.220.220"
+
+;client-to-client
+;duplicate-cn
+;max-clients 100
+
+;compress lz4-v2
+;push "compress lz4-v2"
+;comp-lzo
+
+keepalive 10 120
+
+{% if openvpn_tls_crypt %}
+tls-crypt {{openvpn_cert_path}}/keys/ta.key
+{% endif %}
+cipher AES-256-CBC
+
+user {{openvpn_user}}
+group {{openvpn_group}}
+
+persist-key
+persist-tun
+
+status {{openvpn_log_path}}/openvpn-status.log
+;log {{openvpn_log_path}}/openvpn.log
+log-append {{openvpn_log_path}}/openvpn.log
+verb 3
+;mute 20
+
+{% if openvpn_proto == 'udp' %}
+explicit-exit-notify 1
+{% endif %}

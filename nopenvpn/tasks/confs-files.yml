@@ -1,0 +1,94 @@
+---
+- name: Check if we have server cert
+  stat:
+    path: "{{openvpn_cert_path}}/keys/{{openvpn_server_cert_key_name}}.crt"
+  register: server_cert_exists
+
+- name: Check if we have server cert in DB
+  shell: "grep '^V.*/CN={{openvpn_server_cert_key_name}}/.*$' {{openvpn_cert_path}}/keys/index.txt"
+  register: server_cert_in_db
+  failed_when: no
+  changed_when: no
+
+- name: Revoke server cert (if it exists and we want it to be replaced)
+  shell: ". ./vars && ./revoke-full {{openvpn_server_cert_key_name}}"
+  args:
+    chdir: "{{openvpn_cert_path}}"
+  failed_when: no
+  when: openvpn_replace_server_cert and server_cert_in_db['stdout'] and server_cert_exists['stat']['exists'] and server_cert_exists['stat']['size'] > 0
+
+- name: Make sure no server cert is in DB (if it does not exist or empty)
+  lineinfile:
+    path: "{{openvpn_cert_path}}/keys/index.txt"
+    regexp: '^V(.*/CN={{openvpn_server_cert_key_name}}/.*)$'
+    state: absent
+  when: server_cert_in_db['stdout'] and (not server_cert_exists['stat']['exists'] or server_cert_exists['stat']['size'] == 0)
+
+- name: Generate server keys (if we creating new server cert or want to replace existing server cert)
+  shell: ". ./vars && ./pkitool --server {{openvpn_server_cert_key_name}}"
+  args:
+    chdir: "{{openvpn_cert_path}}"
+  when: openvpn_replace_server_cert or not server_cert_in_db['stdout'] or not server_cert_exists['stat']['exists'] or server_cert_exists['stat']['size'] == 0
+  notify: restart openvpn
+
+- name: Check if we have server conf
+  stat:
+    path: "{{openvpn_conf_path}}/{{openvpn_server_conf_file}}"
+  register: server_conf_exists
+
+- name: Set server conf template (if we creating new server conf or want to replace existing server conf)
+  template:
+    src: server.conf.j2
+    dest: "{{openvpn_conf_path}}/{{openvpn_server_conf_file}}"
+    owner: root
+    group: root
+    mode: 0644
+  when: openvpn_replace_server_conf or not server_conf_exists['stat']['exists']
+  notify: restart openvpn
+
+- name: Create client configs directory
+  file:
+    path: "{{openvpn_ccd_path}}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Put example client conf file
+  copy:
+    src: cc.example
+    dest: "{{openvpn_ccd_path}}/cc.example"
+
+- name: Create generated configs directory
+  file:
+    path: "{{openvpn_generated_conf_path}}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Put script to generate configs
+  template:
+    src: "{{item}}"
+    dest: "{{openvpn_generated_conf_path}}/{{openvpn_server_cert_key_name}}.{{item | replace('.j2', '')}}"
+  loop:
+    - client.conf.base.j2
+    - genconf.sh.j2
+
+- name: Create pool persist file
+  command: "touch {{openvpn_conf_path}}/{{openvpn_pool_persist_file}}"
+  args:
+    creates: "{{openvpn_conf_path}}/{{openvpn_pool_persist_file}}"
+    warn: no
+
+- name: Set attributes to pool persist file
+  file:
+    path: "{{openvpn_conf_path}}/{{openvpn_pool_persist_file}}"
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Create log directory
+  file:
+    path: "{{openvpn_log_path}}"
+    state: directory
